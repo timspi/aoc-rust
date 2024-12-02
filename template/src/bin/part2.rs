@@ -1,7 +1,7 @@
 fn main() {
     let input = include_str!("./input.txt");
     let output = run(input);
-    dbg!(output);
+    print!("{}\n", output);
 }
 
 fn run(input: &str) -> String {
