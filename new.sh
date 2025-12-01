@@ -1,10 +1,14 @@
 #!/bin/bash
 
+year="$(date +"%Y")"
+
+echo "Working on year $year"
+
 echo -n "Create day: "
 read day
 
 printf -v name 'day%02d' "$day"
-mkdir $name
+mkdir -p $year/$name
 
-cp -r template/. $name/
-sed -i "s/project-name/$name/g" $name/Cargo.toml
+cp -r template/. $year/$name/
+sed -i "s/project-name/$name/g" $year/$name/Cargo.toml
