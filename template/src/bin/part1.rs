@@ -1,7 +1,9 @@
+use std::time::Instant;
+
 fn main() {
     let input = include_str!("./input.txt");
-    let output = run(input);
-    print!("{}\n", output);
+    let now = Instant::now();
+    println!("{}   ({} us)", run(input), now.elapsed().as_micros());
 }
 
 fn run(input: &str) -> String {
@@ -15,6 +17,6 @@ mod tests {
     #[test]
     fn it_works() {
         let result = run("");
-        assert_eq!(result, "".to_string());
+        assert_eq!(result, "");
     }
 }
