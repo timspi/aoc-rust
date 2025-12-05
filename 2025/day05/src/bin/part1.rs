@@ -25,7 +25,6 @@ fn run(input: &str) -> String {
         ranges.push((from, to));
     }
 
-    ranges.sort_by_key(|(from, _)| *from);
     let mut counter = 0;
 
     // Ingredients
@@ -54,17 +53,11 @@ fn run_alt(input: &str) -> String {
     let mut counter = 0;
 
     // Remove overlaps to enable binary search
-    for i in 0..ranges.len() {
-        if i + 1 < ranges.len() {
-            // check if next range is overlapping
-            if ranges[i + 1].0 <= ranges[i].1 {
-                // adjust from of next range to start after the current already counted one
-                ranges[i + 1].0 = ranges[i].1 + 1;
-                // if the next range becomes invalid, use the to of the current to avoid double counting
-                if ranges[i + 1].1 < ranges[i + 1].0 {
-                    ranges[i + 1].1 = ranges[i].1;
-                }
-            }
+    for i in 0..ranges.len() - 1 {
+        // check if next range is overlapping
+        if ranges[i + 1].0 <= ranges[i].1 {
+            // adjust from of next range to start after the current already counted one
+            ranges[i + 1].0 = ranges[i].1 + 1;
         }
     }
 
@@ -76,7 +69,7 @@ fn run_alt(input: &str) -> String {
                 if *from > id {
                     Ordering::Greater
                 } else if *to < id {
-                    Ordering::Less
+                    Ordering::Less // this only is true when there are no overlaps
                 } else {
                     Ordering::Equal
                 }
