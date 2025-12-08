@@ -1,115 +1,113 @@
+use std::{
+    collections::{HashMap, HashSet},
+    time::Instant,
+};
+
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
 fn main() {
     let input = include_str!("./input.txt");
-    let output = run(input);
-    print!("{}\n", output);
+    let now = Instant::now();
+    println!("{}   ({} us)", run(input), now.elapsed().as_micros());
 }
 
 fn run(input: &str) -> String {
-    // let mut map = HashMap::new();
     let mut start_pos: (i32, i32) = (0, 0);
-    let mut obstructions = Vec::new();
+    let mut obstructions = HashSet::new();
 
     let lines: Vec<_> = input.lines().collect();
 
-    let height = lines.len().try_into().unwrap();
-    let width = lines.first().unwrap().len().try_into().unwrap();
+    let height = lines.len() as i32;
+    let width = lines.first().unwrap().len() as i32;
 
     for (y, line) in lines.iter().enumerate() {
         for (x, field) in line.bytes().enumerate() {
-            let coords = (x.try_into().unwrap(), y.try_into().unwrap());
+            let coords = (x as i32, y as i32);
             if field == b'#' {
-                obstructions.push(coords);
+                obstructions.insert(coords);
             } else if field == b'^' {
                 start_pos = coords;
             }
         }
     }
 
-    // dbg!(&obstructions);
+    // Find possible obstacle positions
 
     let dirs: Vec<(i32, i32)> = vec![(0, -1), (1, 0), (0, 1), (-1, 0)];
     let mut pos: (i32, i32) = start_pos.clone();
     let mut dir_index = 0;
-    let mut visited = Vec::new();
-    let mut possible_obst = Vec::new();
-    while pos.0 >= 0 && pos.0 < width && pos.1 >= 0 && pos.1 < height {
-        // dbg!(pos);
-        if !visited.contains(&pos) {
-            visited.push(pos);
-        }
+    let mut possible_obst = HashMap::new();
 
+    while pos.0 >= 0 && pos.0 < width && pos.1 >= 0 && pos.1 < height {
         let next = (pos.0 + dirs[dir_index].0, pos.1 + dirs[dir_index].1);
-        if !possible_obst.contains(&next) {
-            possible_obst.push(next);
-        }
         if obstructions.contains(&next) {
             // Rotate right
             dir_index = (dir_index + 1) % 4;
-        }
-
-        pos.0 += dirs[dir_index].0;
-        pos.1 += dirs[dir_index].1;
-    }
-    // dbg!(&possible_obst);
-
-    // Test all possible locations (only sensible on the actual path of the guard, skip first two as on and in front of guard)
-    let mut sum = 0;
-    for obst_pos in &possible_obst {
-        // if obstructions.contains(&(x, y)) {
-        //     // obstruction already there
-        //     continue;
-        // }
-        if obst_pos.0 == start_pos.0 && obst_pos.1 == start_pos.1 {
-            // cannot place on top of guard
             continue;
         }
+        // Store the current pos as the start for checking that loop
+        // (only the first, as would be impossible to reach the second when obstacle was already added)
+        possible_obst.entry(next).or_insert((pos, dir_index));
 
-        let mut test_obst = obstructions.clone();
-        test_obst.push(*obst_pos);
-        if test_loop(start_pos, &test_obst, width, height) {
-            // dbg!(obst_pos);
-            sum += 1;
-        }
+        pos = next;
     }
-    // let mut test_obst = obstructions.clone();
-    // test_obst.push((3, 6));
-    // if test_loop(start_pos, &test_obst, width, height) {
-    //     sum += 1;
-    // }
 
-    // dbg!(&obstructions);
+    // Test all possible locations
+    let sum: u32 = possible_obst
+        .par_iter()
+        .map(|(obstacle, (start, start_dir))| {
+            // Cannot place obstacle on top or in front of guard
+            if *obstacle == start_pos || *obstacle == (pos.0, pos.1 - 1) {
+                return 0;
+            }
+
+            let mut test_obst = obstructions.clone();
+            test_obst.insert(*obstacle);
+            if test_loop(&test_obst, start, start_dir, width, height) {
+                1
+            } else {
+                0
+            }
+        })
+        .sum();
+
     sum.to_string()
 }
 
-fn test_loop(start: (i32, i32), obstructions: &Vec<(i32, i32)>, width: i32, height: i32) -> bool {
+fn test_loop(
+    obstructions: &HashSet<(i32, i32)>,
+    start: &(i32, i32),
+    start_dir: &usize,
+    width: i32,
+    height: i32,
+) -> bool {
     let mut pos = start.clone();
-    let dirs: Vec<(i32, i32)> = vec![(0, -1), (1, 0), (0, 1), (-1, 0)];
-    let mut dir_index = 0;
-    let mut visited = Vec::new();
-    while pos.0 >= 0 && pos.0 < width && pos.1 >= 0 && pos.1 < height {
-        // dbg!(pos);
-        let state = (pos.0, pos.1, dirs[dir_index].0, dirs[dir_index].1);
-        if visited.contains(&state) {
-            // Found a loop
-            // dbg!("loop", &visited);
-            return true;
-        } else {
-            visited.push(state);
-        }
+    let mut dir_index = start_dir.clone();
 
-        let mut next = (pos.0 + dirs[dir_index].0, pos.1 + dirs[dir_index].1);
-        while obstructions.contains(&next) {
+    let dirs: Vec<(i32, i32)> = vec![(0, -1), (1, 0), (0, 1), (-1, 0)];
+    let mut visited = HashSet::new();
+    loop {
+        // Rotate until next position is free
+        let next = (pos.0 + dirs[dir_index].0, pos.1 + dirs[dir_index].1);
+        if obstructions.contains(&next) {
             // Rotate right
             dir_index = (dir_index + 1) % 4;
-            next = (pos.0 + dirs[dir_index].0, pos.1 + dirs[dir_index].1);
+            continue; // might cause endless loop if completely blocked in
         }
 
-        pos.0 += dirs[dir_index].0;
-        pos.1 += dirs[dir_index].1;
+        pos = next;
+
+        if pos.0 < 0 || pos.0 >= width || pos.1 < 0 || pos.1 >= height {
+            // Stop when leaving map -> no loop
+            return false;
+        }
+
+        let state = (pos.0, pos.1, dir_index as u8);
+        if !visited.insert(state) {
+            // Found a loop
+            return true;
+        }
     }
-    // Left the map -> no loop
-    // dbg!("no loop", &visited);
-    return false;
 }
 
 #[cfg(test)]
