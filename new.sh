@@ -1,6 +1,6 @@
 #!/bin/bash
 
-year="$(date +"%Y")"
+year=${1:-$(date +"%Y")}
 
 echo "Working on year $year"
 
