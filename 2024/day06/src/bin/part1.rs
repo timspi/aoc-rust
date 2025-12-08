@@ -1,13 +1,15 @@
+use std::{collections::HashSet, time::Instant};
+
 fn main() {
     let input = include_str!("./input.txt");
-    let output = run(input);
-    print!("{}\n", output);
+    let now = Instant::now();
+    println!("{}   ({} us)", run(input), now.elapsed().as_micros());
 }
 
 fn run(input: &str) -> String {
     // let mut map = HashMap::new();
     let mut pos: (i32, i32) = (0, 0);
-    let mut obstructions = Vec::new();
+    let mut obstructions = HashSet::new();
 
     let lines: Vec<_> = input.lines().collect();
 
@@ -18,7 +20,7 @@ fn run(input: &str) -> String {
         for (x, field) in line.bytes().enumerate() {
             let coords = (x.try_into().unwrap(), y.try_into().unwrap());
             if field == b'#' {
-                obstructions.push(coords);
+                obstructions.insert(coords);
             } else if field == b'^' {
                 pos = coords;
             }
@@ -29,12 +31,10 @@ fn run(input: &str) -> String {
 
     let dirs: Vec<(i32, i32)> = vec![(0, -1), (1, 0), (0, 1), (-1, 0)];
     let mut dir_index = 0;
-    let mut visited = Vec::new();
+    let mut visited = HashSet::new();
     while pos.0 >= 0 && pos.0 < width && pos.1 >= 0 && pos.1 < height {
         // dbg!(pos);
-        if !visited.contains(&pos) {
-            visited.push(pos);
-        }
+        visited.insert(pos);
 
         let next = (pos.0 + dirs[dir_index].0, pos.1 + dirs[dir_index].1);
         if obstructions.contains(&next) {
@@ -64,6 +64,6 @@ mod tests {
 ........#.
 #.........
 ......#...");
-        assert_eq!(result, "41".to_string());
+        assert_eq!(result, "41");
     }
 }
